@@ -29,24 +29,31 @@ jobs:
       #ESLint 경고 무시
       - name: Build
         run: npm run build -- --no-verify
-
+      
+      # Login to ghcr
+      - name: Login to ghcr
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: pinetree2
+          password: ${{ secrets.GHCR_TOKEN }}
+          
       # Docker 빌드 생성 및 푸시
       - name: dev Docker build & push
         if: contains(github.ref, 'main') || contains(github.ref, 'develop')
         run: |
-          echo ${{ secrets.SONG_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker build -f Dockerfile -t ghcr.io/whatever-mentoring/whatssue-fe/whatssue:1.0 .
-          docker push ghcr.io/whatever-mentoring/whatssue-fe/whatssue:1.0
+          docker build -f Dockerfile -t ghcr.io/onion-city/whatssue-fe/whatssue-fe:latest .
+          docker push ghcr.io/onion-city/whatssue-fe/whatssue-fe:latest
 
       # 개발서버 SSH접속 및 배포
       - name: Deploy
         uses: appleboy/ssh-action@master
         if: contains(github.ref, 'main') || contains(github.ref, 'develop')
         with:
-          host: ${{ secrets.NCP_DEV_SERVER_IP }}
-          username: ${{ secrets.NCP_DEV_SERVER_USER }}
-          password: ${{ secrets.NCP_DEV_SERVER_PASSWORD }}
-          port: ${{ secrets.NCP_DEV_SERVER_SSH_PORT }}
+          host: ${{ secrets.DEV_SERVER_DNS }}
+          username: ${{ secrets.DEV_SERVER_USER}}
+          password: ${{ secrets.DEV_SERVER_PASSWORD  }}
+          port: ${{ secrets.DEV_SERVER_SSH_PORT }}
           script: |
             echo "${{ secrets.SONG_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
             if [ "$(docker ps -aq -f name=whatssue-fe)" ]; then
@@ -54,10 +61,10 @@ jobs:
                   sudo docker rm whatssue-fe
             fi
               # 이전 이미지를 제거합니다.
-              if [ "$(docker images -q ghcr.io/whatever-mentoring/whatssue-fe/whatssue)" ]; then
-                sudo docker rmi ghcr.io/whatever-mentoring/whatssue-fe/whatssue
+              if [ "$(docker images -q ghcr.io/onion-city/whatssue-fe/whatssue-fe)" ]; then
+                sudo docker rmi ghcr.io/onion-city/whatssue-fe/whatssue-fe
               fi
 
-            sudo docker pull ghcr.io/whatever-mentoring/whatssue-fe/whatssue:1.0
-            sudo docker run -d -p 3000:3000 --name whatssue-fe ghcr.io/whatever-mentoring/whatssue-fe/whatssue:1.0
+            sudo docker pull ghcr.io/onion-city/whatssue-fe/whatssue-fe:latest
+            sudo docker run -d -p 3000:3000 --name whatssue-fe ghcr.io/onion-city/whatssue-fe/whatssue-fe:latest
             sudo docker image prune -f
